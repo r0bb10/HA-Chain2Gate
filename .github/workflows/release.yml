@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "20*"
+      - "v20*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build (YYYY.M.PATCH or vYYYY.M.PATCH)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chain2gate-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+      - name: Build integration from tag
+        id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import re
+          import tomllib
+          import zipfile
+
+          tag = os.environ["RELEASE_TAG"]
+          match = re.fullmatch(r"v?([2-9][0-9]{3}\.([1-9]|1[0-2])\.(0|[1-9][0-9]*))", tag)
+          if match is None:
+              raise SystemExit("Use YYYY.M.PATCH or vYYYY.M.PATCH without zero-padded months")
+          version = match[1]
+          hacs = json.loads(pathlib.Path("hacs.json").read_text())
+          if hacs.get("zip_release") is not True or hacs.get("filename") != "chain2gate.zip":
+              raise SystemExit("This tag lacks release ZIP configuration; push a new tag containing the updated hacs.json")
+          component = pathlib.Path("custom_components/chain2gate")
+          manifest_path = component / "manifest.json"
+          manifest = json.loads(manifest_path.read_text())
+          project_path = pathlib.Path("pyproject.toml")
+          project, replacements = re.subn(
+              r'(?m)^version = "[^"]+"$', f'version = "{version}"',
+              project_path.read_text(), count=1,
+          )
+          if replacements != 1 or tomllib.loads(project)["project"]["version"] != version:
+              raise SystemExit("Unable to update development metadata")
+          manifest["version"] = version
+          manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+          project_path.write_text(project)
+          pathlib.Path("dist").mkdir(exist_ok=True)
+          with zipfile.ZipFile("dist/chain2gate.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+              archive.write("LICENSE", "LICENSE")
+              for path in sorted(component.rglob("*")):
+                  if path.is_file() and "__pycache__" not in path.parts and path.suffix not in {".pyc", ".pyo"}:
+                      archive.write(path, path.relative_to(component))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"version={version}\ntag={tag}\n")
+          PY
+      - name: Publish release package for HACS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/chain2gate.zip --clobber
+          else
+            gh release create "$TAG" dist/chain2gate.zip --verify-tag --title "$VERSION" --generate-notes
+          fi

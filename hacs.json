@@ -1,4 +1,6 @@
 {
   "name": "Chain2Gate",
+  "zip_release": true,
+  "filename": "chain2gate.zip",
   "homeassistant": "2026.2.0"
 }

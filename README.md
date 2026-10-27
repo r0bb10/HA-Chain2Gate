@@ -1,5 +1,7 @@
 # Chain2Gate for Home Assistant
 
+![Chain2Gate](custom_components/chain2gate/brand/logo.png)
+
 Native **local-push** integration for MAC s.r.l. Chain2Gate gateways. Receives
 meter readings directly over HTTP/WebSocket.
 
