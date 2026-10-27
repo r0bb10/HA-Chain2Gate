@@ -1,0 +1,42 @@
+{
+  "title": "Chain2Gate",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect to Chain2Gate",
+        "description": "Enter the local gateway hostname or IPv4 address. Its MAC address is detected automatically when possible; otherwise you can enter it manually.",
+        "data": {"host": "Host", "mac": "MAC address (optional)", "apartment": "Apartment label (optional)"}
+      },
+      "discovery_confirm": {
+        "title": "Add {name}",
+        "description": "Connect directly to this gateway. The MAC address is filled automatically when detected; otherwise you can optionally enter it manually.",
+        "data": {"mac": "MAC address (optional)", "apartment": "Apartment label (optional)"}
+      },
+      "reconfigure": {
+        "title": "Change gateway address",
+        "description": "The address must belong to the same gateway.",
+        "data": {"host": "Host"}
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to identify the gateway. Check its address and local network access.",
+      "invalid_input": "Enter a valid hostname/IPv4 address and, if supplied, a full MAC address.",
+      "wrong_device": "This address belongs to a different gateway."
+    },
+    "abort": {
+      "already_configured": "This gateway is already configured.",
+      "cannot_connect": "Unable to identify the discovered gateway.",
+      "not_chain2gate": "This is not a Chain2Gate service.",
+      "reconfigure_successful": "Gateway address updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Chain2Gate options",
+        "data": {"apartment": "Apartment label"}
+      }
+    }
+  }
+}
